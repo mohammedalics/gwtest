@@ -1,0 +1,59 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: route_to_publicapis
+          uri: https://api.publicapis.org/entries
+          predicates:
+            - Path=/entries/**
+          filters:
+            - CircuitBreaker=gwtest-publicapis
+            - RewritePath=/(?<segment>.*), /$\{segment}
+      default-filters:
+        - name: MyFilter
+  logging.level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty.http.client: INFO
+    io.github.resilience4j: DEBUG
+  webflux:
+    base-path: /
+  retry:
+    backoff-delay: 1000 # Wait 1 second before the first attempt
+    backoff-max-delay: 30000 # 5 seconds is the max interval to wait
+    backoff-multiplier: 2 # Multiply the initial interval each attempt
+    max-attempts: 10
+
+management:
+  endpoints:
+    web:
+      base-path: /common
+      exposure:
+        include: health,prometheus
+
+  health:
+    defaults:
+      enabled: false
+    ping:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 2s
+        failureRateThreshold: 50
+        slowCallDurationThreshold: 2s
+        eventConsumerBufferSize: 10
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 60s
+
+
